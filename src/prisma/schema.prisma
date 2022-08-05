@@ -1,0 +1,311 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["interactiveTransactions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  STUDENT
+  TEACHER
+  STAFF
+}
+
+model User {
+  id        String    @id @default(uuid()) @db.Uuid
+  ssoid     String    @unique @db.VarChar
+  firstName String?   @db.VarChar
+  lastName  String?   @db.VarChar
+  email     String    @unique @db.VarChar
+  type      UserType  @default(STUDENT)
+  isActive  Boolean   @default(true) @db.Boolean
+  birthDate DateTime? @db.Timestamp
+
+  StudentCoursePeriodProgramme StudentCoursePeriodProgramme[]
+  StudentCohort                StudentCohort[]
+  TeacherCourse                TeacherCourse[]
+  StudentExamGrade             StudentExamGrade[]
+  AclUserRole                  AclUserRole[]
+  RefreshToken                 RefreshToken[]
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+  deletedAt                    DateTime?
+  Programme                    Programme[]
+}
+
+enum CourseType {
+  CORE
+  PRIMER
+  PROJECT
+  ELECTIVE
+}
+
+model Course {
+  id                           String                         @id @default(uuid()) @db.Uuid
+  displayName                  String                         @db.VarChar
+  credits                      Int                            @db.Integer
+  graded                       Float                          @default(0.0) @db.DoublePrecision
+  passingGrade                 Float                          @db.DoublePrecision
+  maxGrade                     Float                          @db.DoublePrecision
+  gradeType                    GradeType                      @default(GRADE)
+  startDate                    DateTime                       @db.Timestamp
+  endDate                      DateTime                       @db.Timestamp
+  Exam                         Exam[]
+  TeacherCourse                TeacherCourse[]
+  CourseCohort                 CourseCohort[]
+  CoursePeriodProgramme        CoursePeriodProgramme[]
+  StudentCoursePeriodProgramme StudentCoursePeriodProgramme[]
+  createdAt                    DateTime                       @default(now())
+  updatedAt                    DateTime                       @updatedAt
+  deletedAt                    DateTime?
+}
+
+enum GradeType {
+  GRADE
+  LABEL
+}
+
+enum PeriodStatus {
+  IN_CREATION
+  IN_PROGRESS
+  CLOSED
+}
+
+model Period {
+  id                    String                  @id @default(uuid()) @db.Uuid
+  displayName           String                  @db.VarChar
+  status                PeriodStatus            @default(IN_CREATION)
+  startDate             DateTime                @db.Timestamp
+  endDate               DateTime                @db.Timestamp
+  programme             Programme               @relation(fields: [programmeId], references: [id])
+  programmeId           String                  @db.Uuid
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  deletedAt             DateTime?
+  CoursePeriodProgramme CoursePeriodProgramme[]
+  CourseCohort          CourseCohort[]
+}
+
+model Programme {
+  id          String    @id @default(uuid()) @db.Uuid
+  displayName String    @db.VarChar
+  language    String?   @db.VarChar
+  startDate   DateTime? @db.Timestamp
+  endDate     DateTime? @db.Timestamp
+  user        User?      @relation(fields: [userId], references: [id])
+  userId      String?    @db.Uuid
+  cohort                Cohort[]
+  period                Period[]
+  CoursePeriodProgramme CoursePeriodProgramme[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  deletedAt             DateTime?
+}
+
+model Cohort {
+  id            String          @id @default(uuid()) @db.Uuid
+  displayName   String          @db.VarChar
+  startDate     DateTime        @db.Timestamp
+  endDate       DateTime        @db.Timestamp
+  identifier    String          @unique @db.VarChar
+  isActive      Boolean         @default(true) @db.Boolean
+  programme     Programme?      @relation(fields: [programmeId], references: [id])
+  programmeId   String?         @db.Uuid
+  StudentCohort StudentCohort[]
+  CourseCohort  CourseCohort[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+}
+
+enum ExamType {
+  EXAM
+  CONTINUOUS
+  LABEL
+}
+
+model Exam {
+  id               String             @id @default(uuid()) @db.Uuid
+  displayName      String             @db.VarChar
+  type             ExamType           @default(EXAM)
+  weight           Int                @db.Integer
+  course           Course             @relation(fields: [courseId], references: [id])
+  courseId         String             @db.Uuid
+  StudentExamGrade StudentExamGrade[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+}
+
+model Grade {
+  id               String             @id @default(uuid()) @db.Uuid
+  currentValue     Float              @db.DoublePrecision
+  previousValue    Float?             @db.DoublePrecision
+  previousDate     DateTime?          @db.Timestamp
+  StudentExamGrade StudentExamGrade[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  deletedAt        DateTime?
+}
+
+model StudentCoursePeriodProgramme {
+  user                  User                  @relation(fields: [userId], references: [id])
+  userId                String                @db.Uuid
+  coursePeriodProgramme CoursePeriodProgramme @relation(fields: [courseId, periodId], references: [courseId, periodId])
+  courseId              String                @db.Uuid
+  periodId              String                @db.Uuid
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  deletedAt             DateTime?
+
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@id([userId, courseId, periodId])
+}
+
+model TeacherCourse {
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @db.Uuid
+  course    Course    @relation(fields: [courseId], references: [id])
+  courseId  String    @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@id([userId, courseId])
+}
+
+model StudentCohort {
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @db.Uuid
+  cohort    Cohort    @relation(fields: [cohortId], references: [id])
+  cohortId  String    @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@id([userId, cohortId])
+}
+
+model CourseCohort {
+  course    Course    @relation(fields: [courseId], references: [id])
+  courseId  String    @db.Uuid
+  cohort    Cohort    @relation(fields: [cohortId], references: [id])
+  cohortId  String    @db.Uuid
+  period    Period    @relation(fields: [periodId], references: [id])
+  periodId  String    @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@id([courseId, cohortId, periodId])
+}
+
+model StudentExamGrade {
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @db.Uuid
+  exam      Exam      @relation(fields: [examId], references: [id])
+  examId    String    @db.Uuid
+  grade     Grade     @relation(fields: [gradeId], references: [id])
+  gradeId   String    @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@id([userId, examId])
+  @@unique([userId, examId, gradeId])
+}
+
+model CoursePeriodProgramme {
+  course      Course     @relation(fields: [courseId], references: [id])
+  courseId    String     @db.Uuid
+  period      Period     @relation(fields: [periodId], references: [id])
+  periodId    String     @db.Uuid
+  programme   Programme  @relation(fields: [programmeId], references: [id])
+  programmeId String     @db.Uuid
+  courseType  CourseType @default(CORE)
+
+  StudentCoursePeriodProgramme StudentCoursePeriodProgramme[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@id([courseId, periodId])
+  @@unique([courseId, periodId, programmeId])
+}
+
+model AclGrant {
+  id          String        @id @default(uuid()) @db.Uuid
+  role        String
+  resource    String
+  action      String
+  attributes  String
+  AclUserRole AclUserRole[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+}
+
+model AclUserRole {
+  id         String    @id @default(uuid()) @db.Uuid
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String    @db.Uuid
+  AclGrant   AclGrant  @relation(fields: [AclGrantId], references: [id])
+  AclGrantId String    @db.Uuid
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+}
+
+enum LogType {
+  INFO
+  ERROR
+  WARNING
+}
+
+model Log {
+  id        String    @id @default(uuid()) @db.Uuid
+  code      String?
+  type      LogType
+  message   String?
+  data      Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum EventType {
+  SEND_EMAIL_GRADE_REPORT
+}
+
+enum EventStatus {
+  WAITING
+  EXECUTED
+  ERROR
+}
+
+model Event {
+  id          String      @id @default(uuid()) @db.Uuid
+  displayName String?
+  status      EventStatus
+  type        EventType
+  data        Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+}
+
+model RefreshToken {
+  id        String @id @default(uuid()) @db.Uuid
+  expiresIn Int    @db.Integer
+  user      User   @relation(fields: [userId], references: [id])
+  userId    String @unique @db.Uuid
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}

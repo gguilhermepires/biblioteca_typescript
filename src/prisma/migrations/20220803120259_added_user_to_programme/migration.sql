@@ -1,0 +1,8 @@
+-- AlterTable
+ALTER TABLE "Programme" ADD COLUMN     "userId" UUID,
+ALTER COLUMN "language" DROP NOT NULL,
+ALTER COLUMN "startDate" DROP NOT NULL,
+ALTER COLUMN "endDate" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "Programme" ADD CONSTRAINT "Programme_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
