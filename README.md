@@ -1,5 +1,6 @@
-# biblioteca_typescript
+# Biblioteca typescript
+
 Biblioteca com exempos de codigos
 
-- manipulação de arquivos
+- Manipulação de arquivos
 - envio de emails - nodeMailer - Amazon SES
